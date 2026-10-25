@@ -1,0 +1,27 @@
+flowchart LR
+  subgraph GH["GitHub Pages / Base Local (docs/)"]
+    HTML["Página de Clientes<br/>(docs/index.html)"]
+    CSV["Base de Investimentos<br/>(docs/data.csv)"]
+  end
+
+  subgraph RPA["Camada RPA (Python)"]
+    PY["extrair_clientes.py<br/>extrair_clientes.ipynb<br/>(BeautifulSoup / HTMLParser)"]
+  end
+
+  subgraph N8N["Orquestração n8n (Workflow 01 MVP e Workflow 02 IA + Gmail)"]
+    WH["Webhook<br/>(POST /Clientes)"]
+    HTTP["HTTP Request + Code<br/>(Ler e Converter CSV)"]
+    MERGE["Merge + Code in JavaScript1<br/>(Cruzar Perfil x Saldo)"]
+    SPLIT["Code in JavaScript2<br/>(1 Item por Cliente + Copy Rules)"]
+    LLM["Message a model (GPT-4o) +<br/>Code in JavaScript3 (Parser/Fallback)"]
+    IF["If (Regex E-mail) +<br/>Send a message (Gmail)"]
+    RESP["Respond to Webhook<br/>(HTTP 200 JSON)"]
+  end
+
+  HTML -->|"Scraping Tabela #clientes"| PY
+  PY -->|"POST JSON {clientes}"| WH
+  WH --> HTTP
+  CSV -->|"GET data.csv"| HTTP
+  WH --> MERGE
+  HTTP --> MERGE
+  MERGE --> SPLIT --> LLM --> IF --> RESP

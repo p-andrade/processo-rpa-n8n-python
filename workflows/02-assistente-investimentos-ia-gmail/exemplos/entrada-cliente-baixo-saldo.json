@@ -1,0 +1,16 @@
+{
+  "clientes": [
+    {
+      "nome": "Isabela Martins",
+      "email": "isabela@email.com",
+      "saldo": "R$ 500,00",
+      "perfil": "Conservador"
+    },
+    {
+      "nome": "Cliente Sem Saldo Minimo",
+      "email": "baixo.saldo@email.com",
+      "saldo": "R$ 50,00",
+      "perfil": "Moderado"
+    }
+  ]
+}

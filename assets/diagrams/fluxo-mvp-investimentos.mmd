@@ -1,0 +1,14 @@
+flowchart LR
+  WH["Webhook Receber Clientes<br/>(POST /Clientes)"]
+  HTTP["Buscar Base CSV Investimentos<br/>(GET data.csv)"]
+  CSV_JSON["Converter CSV para JSON<br/>(Code in JavaScript)"]
+  MERGE["Unir Clientes e Investimentos<br/>(Merge combineByPosition)"]
+  MATCH["Cruzar Perfis e Gerar<br/>Recomendacoes Estáticas (Code)"]
+  RESP["Responder Webhook MVP<br/>(Respond to Webhook 200 OK)"]
+
+  WH -->|"main[0]"| HTTP
+  WH -->|"main[0] -> Input 1"| MERGE
+  HTTP --> CSV_JSON
+  CSV_JSON -->|"Input 2"| MERGE
+  MERGE --> MATCH
+  MATCH --> RESP

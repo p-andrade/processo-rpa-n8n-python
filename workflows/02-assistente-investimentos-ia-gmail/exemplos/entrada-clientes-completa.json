@@ -1,0 +1,64 @@
+{
+  "clientes": [
+    {
+      "nome": "Ana Silva",
+      "email": "ana@email.com",
+      "saldo": "R$ 12.500,00",
+      "perfil": "Conservador"
+    },
+    {
+      "nome": "Bruno Lima",
+      "email": "bruno@email.com",
+      "saldo": "R$ 3.200,00",
+      "perfil": "Moderado"
+    },
+    {
+      "nome": "Carla Souza",
+      "email": "carla@email.com",
+      "saldo": "R$ 28.900,00",
+      "perfil": "Arrojado"
+    },
+    {
+      "nome": "Daniel Oliveira",
+      "email": "daniel@email.com",
+      "saldo": "R$ 850,00",
+      "perfil": "Conservador"
+    },
+    {
+      "nome": "Elena Rodrigues",
+      "email": "elena@email.com",
+      "saldo": "R$ 45.000,00",
+      "perfil": "Arrojado"
+    },
+    {
+      "nome": "Felipe Santos",
+      "email": "felipe@email.com",
+      "saldo": "R$ 7.800,00",
+      "perfil": "Moderado"
+    },
+    {
+      "nome": "Gabriela Costa",
+      "email": "gabriela@email.com",
+      "saldo": "R$ 1.500,00",
+      "perfil": "Conservador"
+    },
+    {
+      "nome": "Henrique Alves",
+      "email": "henrique@email.com",
+      "saldo": "R$ 22.300,00",
+      "perfil": "Moderado"
+    },
+    {
+      "nome": "Isabela Martins",
+      "email": "isabela@email.com",
+      "saldo": "R$ 500,00",
+      "perfil": "Conservador"
+    },
+    {
+      "nome": "João Pereira",
+      "email": "joao@email.com",
+      "saldo": "R$ 15.000,00",
+      "perfil": "Arrojado"
+    }
+  ]
+}

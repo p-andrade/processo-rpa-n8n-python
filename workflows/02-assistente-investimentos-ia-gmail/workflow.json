@@ -1,0 +1,342 @@
+{
+  "name": "Processo de RPA com N8N e Python",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "Clientes",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        64,
+        -304
+      ],
+      "id": "212c65d7-6c05-4091-99e2-c597ec579eeb",
+      "name": "Webhook",
+      "webhookId": "5c16b482-3265-4bb1-a6d5-d2254ef943d2"
+    },
+    {
+      "parameters": {
+        "url": "https://digitalinnovationone.github.io/dio-lab-assistente-investimentos-rpa-n8n/data.csv",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        256,
+        -192
+      ],
+      "id": "8a13356b-0920-45e6-a1e8-b91467281981",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pega o CSV como texto vindo do HTTP Request\nconst csvRaw = $json.data ?? $json.body ?? $json;\nconst text = (typeof csvRaw === \"string\") ? csvRaw : JSON.stringify(csvRaw);\n\nconst lines = text.split(/\\r?\\n/).map(l => l.trim()).filter(Boolean);\nconst headers = lines[0].split(\",\").map(h => h.trim());\n\nconst investimentos = lines.slice(1).map(line => {\n  const cols = line.split(\",\").map(c => c.trim());\n  const obj = {};\n  headers.forEach((h, i) => obj[h] = cols[i] ?? \"\");\n  \n  // normaliza minimo para numero\n  obj.minimo = Number(String(obj.minimo).replace(/[^\\d]/g, \"\")) || 0;\n  \n  return obj;\n});\n\nreturn [{ json: { investimentos } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        -192
+      ],
+      "id": "10ef834c-238f-4fae-9095-b608bda57597",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        608,
+        -304
+      ],
+      "id": "6e93f900-1b11-4bf1-a74f-571b9198bcfa",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "// CORREÇÃO ERRO 01: Implementação completa do cruzamento Clientes x Investimentos\n// Recebe clientes do Webhook + investimentos do CSV (via Merge) e gera a lista 'resultados'.\n\nfunction parseBRL(valor) {\n  if (typeof valor === \"number\") return valor;\n  if (!valor) return 0;\n  const s = String(valor)\n    .replace(\"R$\", \"\")\n    .replace(/\\./g, \"\")\n    .replace(\",\", \".\")\n    .replace(/[^\\d.]/g, \"\")\n    .trim();\n  const n = Number(s);\n  return Number.isFinite(n) ? n : 0;\n}\n\nconst clientes = $json.body?.clientes ?? $json.clientes ?? [];\nconst investimentos = $json.investimentos ?? [];\n\nconst TEMPLATES = {\n  Conservador: (nome, prod, rent) => `Olá, ${nome}! Para o seu perfil Conservador, priorizamos segurança e liquidez em renda fixa. Recomendamos o produto ${prod} (rentabilidade de referência: ${rent}).`,\n  Moderado: (nome, prod, rent) => `Olá, ${nome}! Para o seu perfil Moderado, buscamos equilíbrio entre proteção e rentabilidade. Recomendamos o produto ${prod} (rentabilidade de referência: ${rent}).`,\n  Arrojado: (nome, prod, rent) => `Olá, ${nome}! Para o seu perfil Arrojado, focamos em diversificação e maior potencial de retorno no longo prazo. Recomendamos o produto ${prod} (rentabilidade: ${rent}).`\n};\n\nconst resultados = clientes.map(c => {\n  const nome = String(c.nome || \"\").trim();\n  const email = String(c.email || \"\").trim().toLowerCase();\n  const perfil = String(c.perfil || \"Conservador\").trim();\n  const saldo_texto = String(c.saldo || \"R$ 0,00\").trim();\n  const saldo_num = parseBRL(saldo_texto);\n\n  const opcoesPerfil = investimentos.filter(\n    inv => String(inv.perfil || \"\").toLowerCase() === perfil.toLowerCase()\n  );\n  const elegiveis = opcoesPerfil.filter(inv => Number(inv.minimo) <= saldo_num);\n  elegiveis.sort((a, b) => Number(b.minimo) - Number(a.minimo));\n\n  const escolhido = elegiveis[0] ?? opcoesPerfil[0] ?? {\n    produto: \"Tesouro Selic\",\n    minimo: 100,\n    rentabilidade: \"13.0%\"\n  };\n\n  const templateFn = TEMPLATES[perfil] ?? TEMPLATES.Conservador;\n  const mensagem_escolhida = templateFn(nome, escolhido.produto, escolhido.rentabilidade);\n\n  return {\n    nome,\n    email,\n    perfil,\n    saldo_texto,\n    saldo_num,\n    recomendacao: escolhido.produto,\n    rentabilidade: escolhido.rentabilidade,\n    aporte_minimo: escolhido.minimo,\n    motivo: `Produto alinhado ao perfil ${perfil} com aporte mínimo de R$ ${escolhido.minimo} compatível com o saldo de ${saldo_texto} (rentabilidade: ${escolhido.rentabilidade}).`,\n    mensagem_escolhida\n  };\n});\n\nreturn [{ json: { resultados } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        -304
+      ],
+      "id": "d8bf50af-29b5-4a12-b857-079a38c95cdd",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const resultados = $json.resultados || [];\n\nfunction parseBRL(valor) {\n  if (!valor) return 0;\n  const s = String(valor)\n    .replace(\"R$\", \"\")\n    .replace(/\\./g, \"\")\n    .replace(\",\", \".\")\n    .replace(/[^\\d.]/g, \"\")\n    .trim();\n  const n = Number(s);\n  return Number.isFinite(n) ? n : 0;\n}\n\n// retorna UM ITEM por cliente\nconst out = resultados.map(c => {\n  const saldoNum = c.saldo_num ?? parseBRL(c.saldo_texto ?? c.saldo);\n  \n  return {\n    json: {\n      email_to: String(c.email || \"\").trim(),\n      nome: String(c.nome || \"\").trim(),\n      perfil: c.perfil,\n      saldo_texto: c.saldo_texto ?? c.saldo,\n      saldo_num: saldoNum,\n      recomendacao: c.recomendacao,\n      motivo: c.motivo,\n      mensagem_base: c.mensagem_escolhida || c.mensagem || \"\",\n      copy_rules: {\n        idioma: \"pt-BR\",\n        tom: \"amigável e profissional\",\n        tamanho: \"curto (4-6 linhas)\",\n        evitar: [\"promessas de ganho\", \"garantias\", \"linguagem agressiva\"]\n      }\n    }\n  };\n});\n\nreturn out;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1008,
+        -304
+      ],
+      "id": "f6e532c8-193d-4975-b4db-855534ece4de",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "GPT-4O"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=Escreva um e-mail curto em pt-BR para o cliente abaixo, sem prometer ganhos e sem garantias.\n\nCliente:\nNome: {{ $json.nome }}\nPerfil: {{ $json.perfil }}\nSaldo: {{ $json.saldo_texto }}\n\nRecomendação:\nProduto: {{ $json.recomendacao }}\nMotivo: {{ $json.motivo }}\n\nRegras de tom e estilo:\n- Idioma: {{ $json.copy_rules.idioma }}\n- Tom: {{ $json.copy_rules.tom }}\n- Tamanho: {{ $json.copy_rules.tamanho }}\n\nRetorne APENAS JSON válido (sem blocos markdown) com a estrutura:\n{\n  \"subject\": \"...\",\n  \"text_body\": \"...\",\n  \"html_body\": \"...\"\n}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        1232,
+        -304
+      ],
+      "id": "cc062322-3701-4aa1-9eb8-4df009c45e5a",
+      "name": "Message a model",
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// CORREÇÃO ERRO 03: Parser da resposta da OpenAI + Guardrail e Fallback determinístico\n// Extrai subject, text_body e html_body do JSON retornado pelo LLM e mescla com os dados do cliente.\n\nconst clientesOriginais = $(\"Code in JavaScript2\").all();\nconst respostasIA = $input.all();\n\nconst saida = respostasIA.map((item, idx) => {\n  const base = clientesOriginais[idx]?.json ?? item.json ?? {};\n  const rawObj = item.json ?? {};\n\n  // Localiza o texto retornado pelo nó Message a model (OpenAI) em diferentes formatos de saída\n  const rawText =\n    rawObj?.message?.content ??\n    rawObj?.output ??\n    rawObj?.text ??\n    rawObj?.choices?.[0]?.message?.content ??\n    (typeof rawObj?.content === \"string\" ? rawObj.content : \"\");\n\n  let parsed = null;\n  let modo_geracao = \"ia_generativa_openai\";\n\n  if (rawText && typeof rawText === \"string\") {\n    try {\n      const limpo = rawText\n        .replace(/```json/gi, \"\")\n        .replace(/```/g, \"\")\n        .trim();\n      parsed = JSON.parse(limpo);\n    } catch (e) {\n      parsed = null;\n    }\n  }\n\n  const fallbackSubject = `Recomendação de Investimento (${base.perfil}): ${base.recomendacao}`;\n  const fallbackText =\n    base.mensagem_base ||\n    `Olá, ${base.nome}! Com base no seu perfil ${base.perfil} e saldo de ${base.saldo_texto}, sugerimos conhecer o produto ${base.recomendacao}. ${base.motivo} Lembre-se: investimentos possuem riscos e rentabilidade passada não representa garantia de resultados futuros.`;\n  const fallbackHtml = `<p>Olá, <strong>${base.nome}</strong>!</p><p>${fallbackText}</p><p><em>Aviso legal: Esta comunicação tem caráter meramente informativo e não constitui promessa ou garantia de rentabilidade.</em></p>`;\n\n  if (!parsed || !parsed.subject || (!parsed.text_body && !parsed.html_body)) {\n    modo_geracao = \"fallback_template_seguro\";\n    parsed = {\n      subject: fallbackSubject,\n      text_body: fallbackText,\n      html_body: fallbackHtml\n    };\n  }\n\n  const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\n  const email_valido = emailRegex.test(String(base.email_to || \"\").trim());\n\n  return {\n    json: {\n      email_to: String(base.email_to || \"\").trim(),\n      email_valido,\n      nome: base.nome,\n      perfil: base.perfil,\n      saldo_texto: base.saldo_texto,\n      saldo_num: base.saldo_num,\n      recomendacao: base.recomendacao,\n      motivo: base.motivo,\n      subject: String(parsed.subject).trim(),\n      text_body: String(parsed.text_body || fallbackText).trim(),\n      html_body: String(parsed.html_body || fallbackHtml).trim(),\n      modo_geracao\n    }\n  };\n});\n\nreturn saida;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1520,
+        -304
+      ],
+      "id": "9174acff-2bdf-47f4-8b14-f76e9fa518ac",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f43abb0c-9542-40d2-b64e-8927c369793f",
+              "leftValue": "={{ $json.email_to }}",
+              "rightValue": "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1776,
+        -304
+      ],
+      "id": "0a68c9e6-8c17-4c25-b3a1-d8a6761d6fba",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email_to }}",
+        "subject": "={{ $json.subject }}",
+        "message": "={{ $json.html_body || $json.text_body }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2016,
+        -384
+      ],
+      "id": "81ec8608-36b4-4291-bbb4-44395697e8e0",
+      "name": "Send a message",
+      "webhookId": "bd5c1405-3a09-454f-a571-77b2ae669e88",
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2272,
+        -304
+      ],
+      "id": "545ee58a-0aa8-47d6-aa6b-f6aa4ea10d3f",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "65d3ad32-a821-43e5-9be1-f8acaf48e0c4",
+  "id": "Tm9a1d2ueCdPTzZk",
+  "tags": []
+}

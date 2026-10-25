@@ -1,0 +1,10 @@
+{
+  "clientes": [
+    {
+      "nome": "Marcos Teste Email Invalido",
+      "email": "email-sem-arroba-invalido.com",
+      "saldo": "R$ 5.000,00",
+      "perfil": "Moderado"
+    }
+  ]
+}

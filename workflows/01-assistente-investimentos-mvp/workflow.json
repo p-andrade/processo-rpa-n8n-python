@@ -1,0 +1,175 @@
+{
+  "name": "01 - Assistente de Investimentos RPA (MVP Mensagens Estaticas)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "Clientes",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        80,
+        -280
+      ],
+      "id": "111c65d7-6c05-4091-99e2-c597ec579e01",
+      "name": "Webhook Receber Clientes",
+      "webhookId": "5c16b482-3265-4bb1-a6d5-d2254ef94301"
+    },
+    {
+      "parameters": {
+        "url": "https://digitalinnovationone.github.io/dio-lab-assistente-investimentos-rpa-n8n/data.csv",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        300,
+        -140
+      ],
+      "id": "111c65d7-6c05-4091-99e2-c597ec579e02",
+      "name": "Buscar Base CSV Investimentos"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extrai o texto bruto do CSV retornado pelo HTTP Request\nconst csvRaw = $json.data ?? $json.body ?? $json;\nconst text = (typeof csvRaw === \"string\") ? csvRaw : JSON.stringify(csvRaw);\n\nconst lines = text.split(/\\r?\\n/).map(l => l.trim()).filter(Boolean);\nconst headers = lines[0].split(\",\").map(h => h.trim());\n\nconst investimentos = lines.slice(1).map(line => {\n  const cols = line.split(\",\").map(c => c.trim());\n  const obj = {};\n  headers.forEach((h, i) => obj[h] = cols[i] ?? \"\");\n  obj.minimo = Number(String(obj.minimo).replace(/[^\\d]/g, \"\")) || 0;\n  return obj;\n});\n\nreturn [{ json: { investimentos } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        -140
+      ],
+      "id": "111c65d7-6c05-4091-99e2-c597ec579e03",
+      "name": "Converter CSV para JSON"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        740,
+        -280
+      ],
+      "id": "111c65d7-6c05-4091-99e2-c597ec579e04",
+      "name": "Unir Clientes e Investimentos"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Converte string em formato monetário brasileiro (ex.: 'R$ 12.500,00') para Number\nfunction parseBRL(valor) {\n  if (typeof valor === \"number\") return valor;\n  if (!valor) return 0;\n  const s = String(valor)\n    .replace(\"R$\", \"\")\n    .replace(/\\./g, \"\")\n    .replace(\",\", \".\")\n    .replace(/[^\\d.]/g, \"\")\n    .trim();\n  const n = Number(s);\n  return Number.isFinite(n) ? n : 0;\n}\n\nconst clientes = $json.body?.clientes ?? $json.clientes ?? [];\nconst investimentos = $json.investimentos ?? [];\n\nconst TEMPLATES_MVP = {\n  Conservador: (nome, prod, rent) => `Olá, ${nome}! Para o seu perfil Conservador, priorizamos segurança e liquidez em renda fixa. Recomendamos o produto ${prod} (rentabilidade de referência: ${rent}).`,\n  Moderado: (nome, prod, rent) => `Olá, ${nome}! Para o seu perfil Moderado, buscamos equilíbrio entre proteção e rentabilidade. Recomendamos o produto ${prod} (rentabilidade de referência: ${rent}).`,\n  Arrojado: (nome, prod, rent) => `Olá, ${nome}! Para o seu perfil Arrojado, focamos em diversificação e maior potencial de retorno no longo prazo. Recomendamos o produto ${prod} (rentabilidade: ${rent}).`\n};\n\nconst resultados = clientes.map(c => {\n  const nome = String(c.nome || \"\").trim();\n  const email = String(c.email || \"\").trim().toLowerCase();\n  const perfil = String(c.perfil || \"Conservador\").trim();\n  const saldo_texto = String(c.saldo || \"R$ 0,00\").trim();\n  const saldo_num = parseBRL(saldo_texto);\n\n  const doPerfil = investimentos.filter(\n    inv => String(inv.perfil || \"\").toLowerCase() === perfil.toLowerCase()\n  );\n  const elegiveis = doPerfil.filter(inv => Number(inv.minimo) <= saldo_num);\n  elegiveis.sort((a, b) => Number(b.minimo) - Number(a.minimo));\n\n  const escolhido = elegiveis[0] ?? doPerfil[0] ?? {\n    produto: \"Tesouro Selic\",\n    minimo: 100,\n    rentabilidade: \"13.0%\"\n  };\n\n  const templateFn = TEMPLATES_MVP[perfil] ?? TEMPLATES_MVP.Conservador;\n  const mensagem_escolhida = templateFn(nome, escolhido.produto, escolhido.rentabilidade);\n\n  return {\n    nome,\n    email,\n    perfil,\n    saldo_texto,\n    saldo_num,\n    recomendacao: escolhido.produto,\n    aporte_minimo: escolhido.minimo,\n    rentabilidade_esperada: escolhido.rentabilidade,\n    motivo: `Compatível com o perfil ${perfil} e saldo disponível (${saldo_texto}) para o aporte mínimo de R$ ${escolhido.minimo}.`,\n    mensagem_escolhida\n  };\n});\n\nreturn [{\n  json: {\n    status: \"sucesso\",\n    modo: \"mvp_mensagens_estaticas\",\n    total_clientes: resultados.length,\n    resultados\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        -280
+      ],
+      "id": "111c65d7-6c05-4091-99e2-c597ec579e05",
+      "name": "Cruzar Perfis e Gerar Recomendacoes Estáticas"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1240,
+        -280
+      ],
+      "id": "111c65d7-6c05-4091-99e2-c597ec579e06",
+      "name": "Responder Webhook MVP"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook Receber Clientes": {
+      "main": [
+        [
+          {
+            "node": "Buscar Base CSV Investimentos",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Unir Clientes e Investimentos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Buscar Base CSV Investimentos": {
+      "main": [
+        [
+          {
+            "node": "Converter CSV para JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Converter CSV para JSON": {
+      "main": [
+        [
+          {
+            "node": "Unir Clientes e Investimentos",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Unir Clientes e Investimentos": {
+      "main": [
+        [
+          {
+            "node": "Cruzar Perfis e Gerar Recomendacoes Estáticas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cruzar Perfis e Gerar Recomendacoes Estáticas": {
+      "main": [
+        [
+          {
+            "node": "Responder Webhook MVP",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Responder Webhook MVP": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "65d3ad32-a821-43e5-9be1-f8acaf48e101",
+  "id": "DioRpaInvestMvp01",
+  "tags": []
+}

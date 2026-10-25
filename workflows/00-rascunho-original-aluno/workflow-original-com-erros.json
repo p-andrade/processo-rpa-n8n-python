@@ -1,0 +1,332 @@
+{
+  "name": "Processo de RPA com N8N e Python (Rascunho Original para Auditoria)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "Clientes",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.2,
+      "position": [
+        64,
+        -304
+      ],
+      "id": "212c65d7-6c05-4091-99e2-c597ec579eeb",
+      "name": "Webhook",
+      "webhookId": "5c16b482-3265-4bb1-a6d5-d2254ef943d2"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2256,
+        -400
+      ],
+      "id": "545ee58a-0aa8-47d6-aa6b-f6aa4ea10d3f",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "url": "https://digitalinnovationone.github.io/dio-lab-assistente-investimentos-rpa-n8n/data.csv",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        256,
+        -208
+      ],
+      "id": "8a13356b-0920-45e6-a1e8-b91467281981",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Pega o CSV como texto vindo do HTTP Request\nconst csvRaw = $json.data ?? $json.body ?? $json;\nconst text = (typeof csvRaw === \"string\") ? csvRaw : JSON.stringify(csvRaw);\n\nconst lines = text.split(/\\r?\\n/).map(l => l.trim()).filter(Boolean);\nconst headers = lines[0].split(\",\").map(h => h.trim());\n\nconst investimentos = lines.slice(1).map(line => {\n  const cols = line.split(\",\").map(c => c.trim());\n  const obj = {};\n  headers.forEach((h, i) => obj[h] = cols[i] ?? \"\");\n  \n  // normaliza minimo para numero\n  obj.minimo = Number(String(obj.minimo).replace(/[^\\d]/g, \"\")) || 0;\n  \n  return obj;\n});\n\nreturn [{ json: { investimentos } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        -192
+      ],
+      "id": "10ef834c-238f-4fae-9095-b608bda57597",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        560,
+        -400
+      ],
+      "id": "6e93f900-1b11-4bf1-a74f-571b9198bcfa",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        784,
+        -400
+      ],
+      "id": "d8bf50af-29b5-4a12-b857-079a38c95cdd",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const resultados = $json.resultados || [];\n\nfunction parseBRL(valor) {\n  if (!valor) return 0;\n  const s = String(valor)\n    .replace(\"R$\", \"\")\n    .replace(/\\./g, \"\")\n    .replace(\",\", \".\")\n    .replace(/[^\\d.]/g, \"\")\n    .trim();\n  const n = Number(s);\n  return Number.isFinite(n) ? n : 0;\n}\n\n// retorna UM ITEM por cliente\nconst out = resultados.map(c => {\n  const saldoNum = c.saldo_num ?? parseBRL(c.saldo_texto ?? c.saldo);\n  \n  return {\n    json: {\n      email_to: String(c.email || \"\").trim(),\n      nome: String(c.nome || \"\").trim(),\n      perfil: c.perfil,\n      saldo_texto: c.saldo_texto ?? c.saldo,\n      saldo_num: saldoNum,\n      recomendacao: c.recomendacao,\n      motivo: c.motivo,\n      mensagem_base: c.mensagem_escolhida || c.mensagem || \"\",\n      copy_rules: {\n        idioma: \"pt-BR\",\n        tom: \"amigável e profissional\",\n        tamanho: \"curto (4-6 linhas)\",\n        evitar: [\"promessas de ganho\", \"garantias\", \"linguagem agressiva\"]\n      }\n    }\n  };\n});\n\nreturn out;\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1008,
+        -400
+      ],
+      "id": "f6e532c8-193d-4975-b4db-855534ece4de",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o",
+          "mode": "list",
+          "cachedResultName": "GPT-4O"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "=// 1. Captura os dados do item que está passando pelo nó\nconst nome = ;\nconst perfil = ;\nconst saldo_texto = $json.saldo_texto;\nconst recomendacao = $json.recomendacao;\nconst motivo = $json.motivo;\n\n// 2. Monta o Prompt exatamente igual ao modelo de resultado fornecido\nconst prompt = `Escreva um e-mail curto em pt-BR para o cliente abaixo, sem prometer ganhos e sem garantias.\n\nCliente:\nNome: ${nome}\nPerfil: ${perfil}\nSaldo: ${saldo_texto}\n\nRecomendação:\nProduto: ${recomendacao}\nMotivo: ${motivo}\n\nRetorne APENAS JSON com:\n{\n  \"subject\": \"...\",\n  \"text_body\": \"...\",\n  \"html_body\": \"...\"\n}`;\n\n// 3. Retorna o objeto no formato padrão que o n8n exige\nreturn [{\n  json: {\n    prompt: prompt\n  }\n}];\n"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        1232,
+        -400
+      ],
+      "id": "cc062322-3701-4aa1-9eb8-4df009c45e5a",
+      "name": "Message a model"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Loop over input items and add a new field called 'myNewField' to the JSON of each one\nfor (const item of $input.all()) {\n  item.json.myNewField = 1;\n}\n\nreturn $input.all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1600,
+        -400
+      ],
+      "id": "9174acff-2bdf-47f4-8b14-f76e9fa518ac",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "sendTo": "cliente@exemplo.com",
+        "subject": "Test",
+        "message": "Hello World",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        2032,
+        -400
+      ],
+      "id": "81ec8608-36b4-4291-bbb4-44395697e8e0",
+      "name": "Send a message",
+      "webhookId": "bd5c1405-3a09-454f-a571-77b2ae669e88"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f43abb0c-9542-40d2-b64e-8927c369793f",
+              "leftValue": "",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "regex"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1824,
+        -400
+      ],
+      "id": "0a68c9e6-8c17-4c25-b3a1-d8a6761d6fba",
+      "name": "If"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to Webhook": {
+      "main": [
+        []
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "65d3ad32-a821-43e5-9be1-f8acaf48e0c3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "e5edbe4ac12a66f6d31a777d73c950244a518c9447dba449be772d702fa8a770"
+  },
+  "nodeGroups": [],
+  "id": "Tm9a1d2ueCdPTzZk",
+  "tags": []
+}

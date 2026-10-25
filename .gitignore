@@ -1,0 +1,25 @@
+# Ignorar ambientes virtuais e cache Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.pytest_cache/
+
+# Ignorar variaveis de ambiente e segredos
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets.json
+credentials.json
+
+# Ignorar arquivos de sistema e editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo

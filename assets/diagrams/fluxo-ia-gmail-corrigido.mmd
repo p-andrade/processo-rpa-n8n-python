@@ -1,0 +1,25 @@
+flowchart LR
+  WH["1. Webhook<br/>(POST /Clientes)"]
+  HTTP["2. HTTP Request<br/>(GET data.csv)"]
+  CODE0["3. Code in JavaScript<br/>(Parser CSV -> investimentos[])"]
+  MERGE["4. Merge<br/>(combineByPosition)"]
+  CODE1["5. Code in JavaScript1<br/>(CORRIGIDO: Cruzar Clientes x CSV)"]
+  CODE2["6. Code in JavaScript2<br/>(Split 1 Item/Cliente + Copy Rules)"]
+  OPENAI["7. Message a model<br/>(CORRIGIDO: Prompt GPT-4o Dinâmico)"]
+  CODE3["8. Code in JavaScript3<br/>(CORRIGIDO: JSON Parser + Fallback)"]
+  IF["9. If<br/>(CORRIGIDO: Regex E-mail)"]
+  GMAIL["10. Send a message<br/>(CORRIGIDO: Gmail Dinâmico)"]
+  RESP["11. Respond to Webhook<br/>(HTTP 200 JSON)"]
+
+  WH --> HTTP
+  WH --> MERGE
+  HTTP --> CODE0
+  CODE0 --> MERGE
+  MERGE --> CODE1
+  CODE1 --> CODE2
+  CODE2 --> OPENAI
+  OPENAI --> CODE3
+  CODE3 --> IF
+  IF -->|"True (E-mail Válido)"| GMAIL
+  IF -->|"False (E-mail Inválido)"| RESP
+  GMAIL --> RESP
