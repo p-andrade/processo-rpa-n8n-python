@@ -264,6 +264,8 @@ Distribuído sob a licença **MIT**. Veja [`LICENSE`](LICENSE) para mais informa
 
 ## 🏁 19. Entrega Oficial do Desafio DIO
 
+- **Repositório Público no GitHub:** [https://github.com/p-andrade/processo-rpa-n8n-python](https://github.com/p-andrade/processo-rpa-n8n-python)
+- **Branch Principal Publicada:** `main`
 - **Workflow Principal Corrigido (11 Nós):** [`n8n/workflow.json`](n8n/workflow.json)
 - **Script e Notebook Python de RPA:** [`src/extrair_clientes.py`](src/extrair_clientes.py) e [`src/extrair_clientes.ipynb`](src/extrair_clientes.ipynb)
 - **Relatório de Correção de Erros:** [`docs/03-diagnostico-e-correcao-erros.md`](docs/03-diagnostico-e-correcao-erros.md)
